@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Sheet Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.10);
+      padding: 2.5rem;
+      max-width: 760px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: #555;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 2rem;
+    }
+
+    .upload-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-zone {
+      border: 2px dashed #d1d5db;
+      border-radius: 10px;
+      padding: 1.8rem 1.2rem 1.4rem;
+      text-align: center;
+      background: #fafafa;
+      transition: border-color 0.18s, background 0.18s;
+    }
+
+    .upload-zone.drag-over {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .upload-zone.has-file {
+      border-color: #16a34a;
+      background: #f0fdf4;
+    }
+
+    .zone-label {
+      font-weight: 600;
+      font-size: 0.97rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .zone-hint {
+      color: #6b7280;
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .choose-btn {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.4rem 1.1rem;
+      font-size: 0.86rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+
+    .choose-btn:hover { background: #1d4ed8; }
+
+    .file-info {
+      margin-top: 0.65rem;
+      font-size: 0.8rem;
+      color: #16a34a;
+      font-weight: 500;
+      min-height: 1.1em;
+      word-break: break-all;
+    }
+
+    .generate-btn {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s;
+      margin-bottom: 1rem;
+    }
+
+    .generate-btn:hover:not(:disabled) { background: #1d4ed8; }
+
+    .generate-btn:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 0.88rem;
+      color: #374151;
+      padding: 0.75rem 1rem;
+      background: #f9fafb;
+      border-radius: 6px;
+      border-left: 3px solid #2563eb;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .status.visible  { display: block; }
+    .status.error    { border-left-color: #dc2626; color: #dc2626; }
+    .status.success  { border-left-color: #16a34a; color: #166534; }
+
+    @media (max-width: 520px) {
+      .upload-row { grid-template-columns: 1fr; }
+      .container  { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Photo Sheet Generator</h1>
+    <p class="subtitle">
+      Upload a photo log (Excel or CSV) and a folder of photos to generate a
+      formatted Word document ready for NJDOT, Amtrak, or municipal submission.
+      Everything runs in your browser — no files are uploaded to any server.
+    </p>
+
+    <div class="upload-row">
+      <div class="upload-zone" id="log-zone">
+        <div class="zone-label">Photo Log</div>
+        <div class="zone-hint">Excel (.xlsx, .xls) or CSV — drag here or click</div>
+        <button class="choose-btn" id="log-btn" type="button">Choose File</button>
+        <input type="file" id="log-input" accept=".xlsx,.xls,.csv" style="display:none">
+        <div class="file-info" id="log-info"></div>
+      </div>
+
+      <div class="upload-zone" id="photos-zone">
+        <div class="zone-label">Photos</div>
+        <div class="zone-hint">Select folder or drag photos here</div>
+        <button class="choose-btn" id="photos-btn" type="button">Choose Folder</button>
+        <input type="file" id="photos-input" accept="image/*" multiple webkitdirectory style="display:none">
+        <div class="file-info" id="photos-info"></div>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generate-btn" disabled>Generate Photo Sheet</button>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
