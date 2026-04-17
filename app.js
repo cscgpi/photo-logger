@@ -510,20 +510,27 @@ async function generate() {
 // ─── Drag-and-drop ───────────────────────────────────────────────────────────
 
 async function filesFromDrop(dt) {
-  const files = [];
-
-  // Synchronously extract ALL entries/files before the first await.
-  // DataTransfer items become inaccessible once the event loop yields,
-  // so calling webkitGetAsEntry() inside an async loop loses every item
-  // after the first await gap — causing only one file to be captured.
+  // Synchronously check for directories before any await —
+  // DataTransfer items close after the first yield.
+  let hasDirectory = false;
   const entries = [];
-  for (const item of [...(dt.items || [])]) {
-    const entry = item.webkitGetAsEntry?.();
-    if (entry) entries.push(entry);
-    else { const f = item.getAsFile?.(); if (f) files.push(f); }
+  if (dt.items?.length) {
+    for (const item of [...dt.items]) {
+      if (item.kind !== 'file') continue;
+      const entry = item.webkitGetAsEntry?.();
+      if (entry) {
+        entries.push(entry);
+        if (entry.isDirectory) hasDirectory = true;
+      }
+    }
   }
 
-  // Walk directory trees asynchronously now that all entries are captured
+  // Plain file drop (no folders): dt.files is always fully populated and
+  // works reliably for network drive paths where webkitGetAsEntry can fail.
+  if (!hasDirectory) return [...(dt.files || [])];
+
+  // Has at least one directory: walk via FileSystem API.
+  const files = [];
   async function walk(entry) {
     if (entry.isFile) {
       files.push(await new Promise((res, rej) => entry.file(res, rej)));
@@ -536,7 +543,6 @@ async function filesFromDrop(dt) {
       } while (batch.length);
     }
   }
-
   for (const entry of entries) await walk(entry);
   return files;
 }
