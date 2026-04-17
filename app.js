@@ -14,7 +14,7 @@ let thumbUrls = new Map();  // lowercase filename → objectURL (preview only)
 
 // ─── DOM refs (assigned in init) ─────────────────────────────────────────────
 
-let logInput, photosInput, logZone, photosZone, generateBtn, statusEl, logInfo, photosInfo;
+let logInput, logZone, photosZone, generateBtn, statusEl, logInfo, photosInfo;
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
@@ -511,6 +511,19 @@ async function generate() {
 
 async function filesFromDrop(dt) {
   const files = [];
+
+  // Synchronously extract ALL entries/files before the first await.
+  // DataTransfer items become inaccessible once the event loop yields,
+  // so calling webkitGetAsEntry() inside an async loop loses every item
+  // after the first await gap — causing only one file to be captured.
+  const entries = [];
+  for (const item of [...(dt.items || [])]) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+    else { const f = item.getAsFile?.(); if (f) files.push(f); }
+  }
+
+  // Walk directory trees asynchronously now that all entries are captured
   async function walk(entry) {
     if (entry.isFile) {
       files.push(await new Promise((res, rej) => entry.file(res, rej)));
@@ -523,11 +536,8 @@ async function filesFromDrop(dt) {
       } while (batch.length);
     }
   }
-  for (const item of [...(dt.items || [])]) {
-    const entry = item.webkitGetAsEntry?.();
-    if (entry) await walk(entry);
-    else { const f = item.getAsFile?.(); if (f) files.push(f); }
-  }
+
+  for (const entry of entries) await walk(entry);
   return files;
 }
 
@@ -550,8 +560,9 @@ function wireZone(zone, { onFile, onFiles }) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  logInput    = document.getElementById('log-input');
-  photosInput = document.getElementById('photos-input');
+  logInput          = document.getElementById('log-input');
+  const photosFilesInput  = document.getElementById('photos-files-input');
+  const photosFolderInput = document.getElementById('photos-folder-input');
   logZone     = document.getElementById('log-zone');
   photosZone  = document.getElementById('photos-zone');
   generateBtn = document.getElementById('generate-btn');
@@ -559,16 +570,20 @@ document.addEventListener('DOMContentLoaded', () => {
   logInfo     = document.getElementById('log-info');
   photosInfo  = document.getElementById('photos-info');
 
-  // Reset value before each click so re-selecting the same file/folder re-fires change
+  // Reset value before each click so re-selecting the same files re-fires change
   document.getElementById('log-btn').addEventListener('click', () => {
     logInput.value = ''; logInput.click();
   });
-  document.getElementById('photos-btn').addEventListener('click', () => {
-    photosInput.value = ''; photosInput.click();
+  document.getElementById('photos-files-btn').addEventListener('click', () => {
+    photosFilesInput.value = ''; photosFilesInput.click();
+  });
+  document.getElementById('photos-folder-btn').addEventListener('click', () => {
+    photosFolderInput.value = ''; photosFolderInput.click();
   });
 
-  logInput   .addEventListener('change', () => { if (logInput.files[0])        handleLogFile(logInput.files[0]); });
-  photosInput.addEventListener('change', () => { if (photosInput.files.length) handlePhotoFiles([...photosInput.files]); });
+  logInput         .addEventListener('change', () => { if (logInput.files[0])              handleLogFile(logInput.files[0]); });
+  photosFilesInput .addEventListener('change', () => { if (photosFilesInput.files.length)  handlePhotoFiles([...photosFilesInput.files]); });
+  photosFolderInput.addEventListener('change', () => { if (photosFolderInput.files.length) handlePhotoFiles([...photosFolderInput.files]); });
 
   wireZone(logZone,    { onFile:  f  => handleLogFile(f)     });
   wireZone(photosZone, { onFiles: fs => handlePhotoFiles(fs) });

@@ -61,6 +61,10 @@
     }
     .choose-btn:hover { background: #1d4ed8; }
 
+    .zone-btns { display: flex; gap: 0.5rem; justify-content: center; }
+    .choose-btn-sec { background: #4b5563; }
+    .choose-btn-sec:hover { background: #374151; }
+
     .file-info {
       margin-top: 0.65rem; font-size: 0.8rem; color: #16a34a;
       font-weight: 500; min-height: 1.1em; word-break: break-all;
@@ -204,9 +208,13 @@
 
       <div class="upload-zone" id="photos-zone">
         <div class="zone-label">Photos</div>
-        <div class="zone-hint">Select folder or drag photos here</div>
-        <button class="choose-btn" id="photos-btn" type="button">Choose Folder</button>
-        <input type="file" id="photos-input" accept="image/*" multiple webkitdirectory style="display:none">
+        <div class="zone-hint">Drag files or a folder here, or click to select</div>
+        <div class="zone-btns">
+          <button class="choose-btn" id="photos-files-btn" type="button">Choose Files</button>
+          <button class="choose-btn choose-btn-sec" id="photos-folder-btn" type="button">Choose Folder</button>
+        </div>
+        <input type="file" id="photos-files-input" accept="image/*" multiple style="display:none">
+        <input type="file" id="photos-folder-input" accept="image/*" multiple webkitdirectory style="display:none">
         <div class="file-info" id="photos-info"></div>
       </div>
     </div>
