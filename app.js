@@ -10,6 +10,7 @@
 
 let logRows  = null;       // [{filename, caption}]
 let photoMap = new Map();  // lowercase filename → File
+let thumbUrls = new Map(); // lowercase filename → objectURL (for preview only)
 
 // ─── DOM refs (assigned in init) ─────────────────────────────────────────────
 
@@ -24,6 +25,12 @@ function setStatus(msg, type) {
 function clearStatus() { statusEl.className = 'status'; }
 function updateBtn()   { generateBtn.disabled = !(logRows && logRows.length && photoMap.size); }
 
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 // ─── Log parsing ──────────────────────────────────────────────────────────────
 
 async function handleLogFile(file) {
@@ -34,9 +41,10 @@ async function handleLogFile(file) {
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     logRows = parseLog(data);
-    logInfo.textContent = `${file.name} — ${logRows.length} photo(s)`;
+    logInfo.textContent = `${file.name} — ${logRows.length} row(s)`;
     logZone.classList.add('has-file');
     updateBtn();
+    renderLogPreview();
     if (photoMap.size) clearStatus(); else setStatus('Now add your photos.');
   } catch (err) {
     setStatus('Error reading log: ' + err.message, 'error');
@@ -48,7 +56,7 @@ async function handleLogFile(file) {
 function detectColumns(headers) {
   const lc = headers.map(h => String(h).toLowerCase().trim());
   const find = variants => {
-    for (const v of variants) { const i = lc.indexOf(v);            if (i >= 0) return i; }
+    for (const v of variants) { const i = lc.indexOf(v);                    if (i >= 0) return i; }
     for (const v of variants) { const i = lc.findIndex(h => h.includes(v)); if (i >= 0) return i; }
     return -1;
   };
@@ -83,10 +91,16 @@ function parseLog(data) {
 // ─── Photo file handling ──────────────────────────────────────────────────────
 
 function handlePhotoFiles(files) {
-  photoMap.clear();
+  let added = 0;
   for (const f of files) {
-    if (f.type.startsWith('image/')) photoMap.set(f.name.toLowerCase(), f);
+    if (!f.type.startsWith('image/')) continue;
+    const key = f.name.toLowerCase();
+    // If same filename is replaced, revoke the old preview URL
+    if (thumbUrls.has(key)) { URL.revokeObjectURL(thumbUrls.get(key)); thumbUrls.delete(key); }
+    photoMap.set(key, f);
+    added++;
   }
+
   if (photoMap.size) {
     photosInfo.textContent = `${photoMap.size} image(s) loaded`;
     photosZone.classList.add('has-file');
@@ -94,8 +108,91 @@ function handlePhotoFiles(files) {
     photosInfo.textContent = 'No image files found in that selection.';
     photosZone.classList.remove('has-file');
   }
+
   updateBtn();
+  renderPhotosPreview();
+  renderLogPreview();      // refresh Found / Missing badges
   if (logRows && photoMap.size) clearStatus();
+}
+
+function clearPhotos() {
+  for (const url of thumbUrls.values()) URL.revokeObjectURL(url);
+  thumbUrls.clear();
+  photoMap.clear();
+  photosZone.classList.remove('has-file');
+  photosInfo.textContent = '';
+  document.getElementById('photos-preview').style.display = 'none';
+  document.getElementById('photos-grid').innerHTML = '';
+  updateBtn();
+  renderLogPreview();    // update badges to "pending"
+}
+
+// ─── Preview: log table ───────────────────────────────────────────────────────
+
+function renderLogPreview() {
+  if (!logRows) return;
+
+  const panel = document.getElementById('log-preview');
+  const tbody = document.getElementById('log-tbody');
+  const meta  = document.getElementById('log-preview-meta');
+  const hasPhotos = photoMap.size > 0;
+
+  meta.textContent = `${logRows.length} row(s)`;
+  tbody.innerHTML = '';
+
+  logRows.forEach((row, i) => {
+    const found = photoMap.has(row.filename.toLowerCase());
+    let badge;
+    if (!hasPhotos) {
+      badge = '<span class="badge badge-pending">—</span>';
+    } else if (found) {
+      badge = '<span class="badge badge-found">Found</span>';
+    } else {
+      badge = '<span class="badge badge-missing">Missing</span>';
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="col-num">${i + 1}</td>` +
+      `<td class="col-file">${escHtml(row.filename)}</td>` +
+      `<td class="col-caption">${escHtml(row.caption)}</td>` +
+      `<td class="col-status">${badge}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  panel.style.display = '';
+}
+
+// ─── Preview: photos grid ─────────────────────────────────────────────────────
+
+function renderPhotosPreview() {
+  if (!photoMap.size) return;
+
+  const panel = document.getElementById('photos-preview');
+  const grid  = document.getElementById('photos-grid');
+  const meta  = document.getElementById('photos-preview-meta');
+
+  meta.textContent = `${photoMap.size} file(s)`;
+  grid.innerHTML = '';
+
+  for (const [name, file] of photoMap) {
+    if (!thumbUrls.has(name)) thumbUrls.set(name, URL.createObjectURL(file));
+    const url  = thumbUrls.get(name);
+    const item = document.createElement('div');
+    item.className = 'photo-item';
+    const img  = document.createElement('img');
+    img.src     = url;
+    img.alt     = name;
+    img.loading = 'lazy';
+    const lbl  = document.createElement('div');
+    lbl.className   = 'thumb-name';
+    lbl.textContent = name;
+    lbl.title       = name;
+    item.append(img, lbl);
+    grid.appendChild(item);
+  }
+
+  panel.style.display = '';
 }
 
 // ─── EXIF orientation correction via canvas ───────────────────────────────────
@@ -153,15 +250,12 @@ function applyOrientation(img, orientation) {
 
 // ─── DOCX layout constants ────────────────────────────────────────────────────
 
-// Image dimensions are in EMUs (English Metric Units): 1 inch = 914 400 EMU
 const EMU_PER_INCH = 914400;
-const EMU_PER_PX   = EMU_PER_INCH / 96;                  // 9 525 EMU/px at 96 DPI
-const MAX_W_EMU    = Math.round(6.5 * EMU_PER_INCH);     // full printable width
-const MAX_H_EMU    = Math.round(4.0 * EMU_PER_INCH);     // half of printable height
-
-// Paragraph spacing in twips (1 twip = 1/1440 inch)
-const SP_IMG_CAP   = 40;   // gap image → caption  (~2 mm)
-const SP_CAP_NEXT  = 240;  // gap caption → next image on same page (~4 mm)
+const EMU_PER_PX   = EMU_PER_INCH / 96;
+const MAX_W_EMU    = Math.round(6.5 * EMU_PER_INCH);
+const MAX_H_EMU    = Math.round(4.0 * EMU_PER_INCH);
+const SP_IMG_CAP   = 40;
+const SP_CAP_NEXT  = 240;
 
 function calcEmu(pixelW, pixelH) {
   let w = Math.round(pixelW * EMU_PER_PX);
@@ -231,16 +325,16 @@ function captionPara(caption, afterTwips) {
 // ─── DOCX assembly (JSZip + raw OOXML) ───────────────────────────────────────
 
 async function buildDocx(rows, photos, onProgress) {
-  const zip      = new JSZip();
+  const zip       = new JSZip();
   const bodyParts = [];
-  const imgRels  = [];
-  let   imgCount = 0;
+  const imgRels   = [];
+  let   imgCount  = 0;
 
   for (let i = 0; i < rows.length; i++) {
     onProgress(`Processing photo ${i + 1} of ${rows.length}…`);
     const { filename, caption } = rows[i];
     const newPage = i > 0 && i % 2 === 0;
-    const isFirst = i % 2 === 0;          // first of the pair on this page
+    const isFirst = i % 2 === 0;
     const file    = photos.get(filename.toLowerCase());
 
     if (file) {
@@ -248,8 +342,8 @@ async function buildDocx(rows, photos, onProgress) {
       try { proc = await processImageFile(file); } catch (_) {}
       if (proc) {
         imgCount++;
-        const relId   = `rId${imgCount + 1}`;   // rId1 is styles
-        const path    = `media/image${imgCount}.jpg`;
+        const relId = `rId${imgCount + 1}`;
+        const path  = `media/image${imgCount}.jpg`;
         zip.file(`word/${path}`, proc.data);
         imgRels.push(
           `<Relationship Id="${relId}"` +
@@ -268,7 +362,6 @@ async function buildDocx(rows, photos, onProgress) {
     bodyParts.push(captionPara(caption, isFirst ? SP_CAP_NEXT : 0));
   }
 
-  // ── word/document.xml ────────────────────────────────────────────────────
   const docXml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:document` +
@@ -282,15 +375,13 @@ async function buildDocx(rows, photos, onProgress) {
     ` xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"` +
     ` xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"` +
     ` mc:Ignorable="w14 w15">` +
-    `<w:body>` +
-    bodyParts.join('') +
+    `<w:body>` + bodyParts.join('') +
     `<w:sectPr>` +
       `<w:pgSz w:w="12240" w:h="15840" w:orient="portrait"/>` +
       `<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>` +
     `</w:sectPr>` +
     `</w:body></w:document>`;
 
-  // ── word/_rels/document.xml.rels ─────────────────────────────────────────
   const docRels =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
@@ -298,7 +389,6 @@ async function buildDocx(rows, photos, onProgress) {
     imgRels.join('') +
     `</Relationships>`;
 
-  // ── word/styles.xml ───────────────────────────────────────────────────────
   const stylesXml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"` +
@@ -313,7 +403,6 @@ async function buildDocx(rows, photos, onProgress) {
     `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>` +
     `</w:styles>`;
 
-  // ── [Content_Types].xml ───────────────────────────────────────────────────
   const contentTypes =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
@@ -326,18 +415,17 @@ async function buildDocx(rows, photos, onProgress) {
     `<Override PartName="/word/styles.xml"   ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
     `</Types>`;
 
-  // ── _rels/.rels ───────────────────────────────────────────────────────────
   const rootRels =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
     `</Relationships>`;
 
-  zip.file('[Content_Types].xml',        contentTypes);
-  zip.file('_rels/.rels',               rootRels);
-  zip.file('word/document.xml',         docXml);
+  zip.file('[Content_Types].xml',           contentTypes);
+  zip.file('_rels/.rels',                  rootRels);
+  zip.file('word/document.xml',            docXml);
   zip.file('word/_rels/document.xml.rels', docRels);
-  zip.file('word/styles.xml',           stylesXml);
+  zip.file('word/styles.xml',              stylesXml);
 
   return zip.generateAsync({
     type: 'blob',
@@ -419,14 +507,21 @@ document.addEventListener('DOMContentLoaded', () => {
   logInfo     = document.getElementById('log-info');
   photosInfo  = document.getElementById('photos-info');
 
-  document.getElementById('log-btn')   .addEventListener('click', () => logInput.click());
-  document.getElementById('photos-btn').addEventListener('click', () => photosInput.click());
+  // Reset value before each click so re-selecting the same file/folder re-fires change
+  document.getElementById('log-btn').addEventListener('click', () => {
+    logInput.value = ''; logInput.click();
+  });
+  document.getElementById('photos-btn').addEventListener('click', () => {
+    photosInput.value = ''; photosInput.click();
+  });
 
-  logInput   .addEventListener('change', () => { if (logInput.files[0])      handleLogFile(logInput.files[0]); });
+  logInput   .addEventListener('change', () => { if (logInput.files[0])        handleLogFile(logInput.files[0]); });
   photosInput.addEventListener('change', () => { if (photosInput.files.length) handlePhotoFiles([...photosInput.files]); });
 
   wireZone(logZone,    { onFile:  f  => handleLogFile(f)     });
   wireZone(photosZone, { onFiles: fs => handlePhotoFiles(fs) });
+
+  document.getElementById('photos-clear-btn').addEventListener('click', clearPhotos);
 
   generateBtn.addEventListener('click', generate);
 });
