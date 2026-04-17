@@ -177,6 +177,10 @@
     <div class="status" id="status"></div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <!-- UMD builds — no ES-module loading, no esm.sh dependency -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/exifr@7.1.3/dist/full.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
