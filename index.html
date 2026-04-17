@@ -29,28 +29,13 @@
       margin-bottom: 3rem;
     }
 
-    h1 {
-      font-size: 1.55rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-      letter-spacing: -0.02em;
-    }
+    h1 { font-size: 1.55rem; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: -0.02em; }
 
-    .subtitle {
-      color: #555;
-      font-size: 0.9rem;
-      line-height: 1.5;
-      margin-bottom: 2rem;
-    }
+    .subtitle { color: #555; font-size: 0.9rem; line-height: 1.5; margin-bottom: 2rem; }
 
     /* ── Upload zones ─────────────────────────────────────────────────────── */
 
-    .upload-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.2rem;
-      margin-bottom: 1.5rem;
-    }
+    .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
 
     .upload-zone {
       border: 2px dashed #d1d5db;
@@ -60,70 +45,43 @@
       background: #fafafa;
       transition: border-color 0.18s, background 0.18s;
     }
-
-    .upload-zone.drag-over {
-      border-color: #2563eb;
-      background: #eff6ff;
-    }
-
-    .upload-zone.has-file {
-      border-color: #16a34a;
-      background: #f0fdf4;
-    }
+    .upload-zone.drag-over { border-color: #2563eb; background: #eff6ff; }
+    .upload-zone.has-file  { border-color: #16a34a; background: #f0fdf4; }
 
     .zone-label { font-weight: 600; font-size: 0.97rem; margin-bottom: 0.25rem; }
     .zone-hint  { color: #6b7280; font-size: 0.8rem; margin-bottom: 1rem; }
 
     .choose-btn {
       display: inline-block;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
+      background: #2563eb; color: #fff;
+      border: none; border-radius: 6px;
       padding: 0.4rem 1.1rem;
-      font-size: 0.86rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.18s;
+      font-size: 0.86rem; font-weight: 500;
+      cursor: pointer; transition: background 0.18s;
     }
     .choose-btn:hover { background: #1d4ed8; }
 
     .file-info {
-      margin-top: 0.65rem;
-      font-size: 0.8rem;
-      color: #16a34a;
-      font-weight: 500;
-      min-height: 1.1em;
-      word-break: break-all;
+      margin-top: 0.65rem; font-size: 0.8rem; color: #16a34a;
+      font-weight: 500; min-height: 1.1em; word-break: break-all;
     }
 
     /* ── Generate + status ────────────────────────────────────────────────── */
 
     .generate-btn {
-      width: 100%;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 0.85rem;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.18s;
-      margin-bottom: 1rem;
+      width: 100%; background: #2563eb; color: #fff;
+      border: none; border-radius: 8px; padding: 0.85rem;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: background 0.18s; margin-bottom: 1rem;
     }
     .generate-btn:hover:not(:disabled) { background: #1d4ed8; }
     .generate-btn:disabled { background: #93c5fd; cursor: not-allowed; }
 
     .status {
-      font-size: 0.88rem;
-      color: #374151;
-      padding: 0.75rem 1rem;
-      background: #f9fafb;
-      border-radius: 6px;
-      border-left: 3px solid #2563eb;
-      display: none;
-      line-height: 1.4;
+      font-size: 0.88rem; color: #374151;
+      padding: 0.75rem 1rem; background: #f9fafb;
+      border-radius: 6px; border-left: 3px solid #2563eb;
+      display: none; line-height: 1.4;
     }
     .status.visible { display: block; }
     .status.error   { border-left-color: #dc2626; color: #dc2626; }
@@ -132,67 +90,44 @@
     /* ── Preview panels ───────────────────────────────────────────────────── */
 
     .preview-panel {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-top: 1.5rem;
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      overflow: hidden; margin-top: 1.5rem;
     }
 
     .preview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
       padding: 0.55rem 0.9rem;
-      background: #f9fafb;
-      border-bottom: 1px solid #e5e7eb;
+      background: #f9fafb; border-bottom: 1px solid #e5e7eb;
     }
 
     .preview-title { font-weight: 600; font-size: 0.88rem; }
     .preview-meta  { font-size: 0.78rem; color: #6b7280; }
 
     .clear-btn {
-      background: none;
-      border: none;
-      font-size: 0.78rem;
-      color: #9ca3af;
-      cursor: pointer;
-      padding: 0 0.2rem;
-      margin-left: 0.6rem;
+      background: none; border: none;
+      font-size: 0.78rem; color: #9ca3af;
+      cursor: pointer; padding: 0 0.2rem; margin-left: 0.6rem;
       text-decoration: underline;
     }
     .clear-btn:hover { color: #dc2626; }
 
     /* Log table */
-    .table-scroll {
-      max-height: 280px;
-      overflow-y: auto;
-    }
+    .table-scroll { max-height: 280px; overflow-y: auto; }
 
-    .log-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-    }
+    .log-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 
     .log-table thead th {
-      position: sticky;
-      top: 0;
-      z-index: 1;
+      position: sticky; top: 0; z-index: 1;
       background: #f3f4f6;
-      padding: 0.4rem 0.75rem;
-      text-align: left;
-      font-weight: 600;
-      color: #374151;
-      border-bottom: 1px solid #e5e7eb;
-      white-space: nowrap;
+      padding: 0.4rem 0.75rem; text-align: left;
+      font-weight: 600; color: #374151;
+      border-bottom: 1px solid #e5e7eb; white-space: nowrap;
     }
 
     .log-table td {
       padding: 0.35rem 0.75rem;
-      border-bottom: 1px solid #f3f4f6;
-      vertical-align: top;
+      border-bottom: 1px solid #f3f4f6; vertical-align: top;
     }
-
     .log-table tbody tr:last-child td { border-bottom: none; }
     .log-table tbody tr:hover td      { background: #fafafa; }
 
@@ -202,11 +137,8 @@
     .col-status  { width: 5.5rem; text-align: center; white-space: nowrap; }
 
     .badge {
-      display: inline-block;
-      padding: 0.1rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: 600;
+      display: inline-block; padding: 0.1rem 0.5rem;
+      border-radius: 4px; font-size: 0.7rem; font-weight: 600;
     }
     .badge-found   { background: #dcfce7; color: #166534; }
     .badge-missing { background: #fee2e2; color: #991b1b; }
@@ -214,39 +146,36 @@
 
     /* Photos grid */
     .photos-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      padding: 0.8rem;
-      max-height: 320px;
-      overflow-y: auto;
+      display: flex; flex-wrap: wrap;
+      gap: 0.6rem; padding: 0.8rem;
+      max-height: 320px; overflow-y: auto;
     }
 
-    .photo-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 90px;
+    .photo-item { display: flex; flex-direction: column; align-items: center; width: 90px; }
+
+    .thumb-wrap { position: relative; width: 90px; height: 68px; }
+
+    .thumb-wrap img {
+      width: 90px; height: 68px;
+      object-fit: cover; border-radius: 4px;
+      border: 1px solid #e5e7eb; display: block;
     }
 
-    .photo-item img {
-      width: 90px;
-      height: 68px;
-      object-fit: cover;
-      border-radius: 4px;
-      border: 1px solid #e5e7eb;
-      display: block;
+    .photo-remove-btn {
+      position: absolute; top: 3px; right: 3px;
+      width: 18px; height: 18px;
+      background: rgba(0,0,0,0.60); color: #fff;
+      border: none; border-radius: 50%;
+      font-size: 12px; line-height: 18px; text-align: center;
+      cursor: pointer; padding: 0;
+      opacity: 0; transition: opacity 0.15s;
     }
+    .thumb-wrap:hover .photo-remove-btn { opacity: 1; }
 
     .thumb-name {
-      font-size: 0.67rem;
-      color: #6b7280;
-      margin-top: 0.2rem;
-      width: 90px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      text-align: center;
+      font-size: 0.67rem; color: #6b7280; margin-top: 0.2rem;
+      width: 90px; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; text-align: center;
     }
 
     @media (max-width: 520px) {
@@ -290,7 +219,10 @@
     <div class="preview-panel" id="log-preview" style="display:none">
       <div class="preview-header">
         <span class="preview-title">Photo Log</span>
-        <span class="preview-meta" id="log-preview-meta"></span>
+        <span>
+          <span class="preview-meta" id="log-preview-meta"></span>
+          <button class="clear-btn" id="log-clear-btn" type="button">Clear</button>
+        </span>
       </div>
       <div class="table-scroll">
         <table class="log-table">

@@ -8,9 +8,9 @@
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-let logRows  = null;       // [{filename, caption}]
-let photoMap = new Map();  // lowercase filename → File
-let thumbUrls = new Map(); // lowercase filename → objectURL (for preview only)
+let logRows   = null;       // [{filename, caption}]
+let photoMap  = new Map();  // lowercase filename → File
+let thumbUrls = new Map();  // lowercase filename → objectURL (preview only)
 
 // ─── DOM refs (assigned in init) ─────────────────────────────────────────────
 
@@ -53,29 +53,51 @@ async function handleLogFile(file) {
   }
 }
 
-function detectColumns(headers) {
+function detectColumns(headers, dataRows) {
   const lc = headers.map(h => String(h).toLowerCase().trim());
+
   const find = variants => {
     for (const v of variants) { const i = lc.indexOf(v);                    if (i >= 0) return i; }
     for (const v of variants) { const i = lc.findIndex(h => h.includes(v)); if (i >= 0) return i; }
     return -1;
   };
+
+  // ── Filename column: scan cell VALUES first for image-file extensions ──────
+  // This handles cases where the header says "Digital Photo No." or any other
+  // non-obvious name but the cells contain "IMG_9781.JPG" etc.
+  const imgExtRe = /\.(jpe?g|png|tiff?|gif|bmp|webp|heic|dng|cr2|nef|arw)$/i;
+  let filenameCol = -1;
+  for (let col = 0; col < headers.length && filenameCol < 0; col++) {
+    if (dataRows.some(row => imgExtRe.test(String(row[col] ?? '')))) {
+      filenameCol = col;
+    }
+  }
+  // Fall back to header-name matching if no image-extension values were found
+  if (filenameCol < 0) {
+    filenameCol = find([
+      'filename', 'file name', 'file_name', 'file',
+      'digital photo no', 'photo no', 'photo number', 'photo num', 'photo#',
+      'photo name', 'photo_name', 'photo',
+      'image name', 'image_name', 'image', 'img',
+    ]);
+  }
+
   return {
-    filenameCol: find(['filename','file name','file_name','file','photo name','photo_name','photo','image name','image_name','image','img']),
-    captionCol:  find(['caption','description','desc','text','note','notes','label','comment','comments']),
-    includeCol:  find(['include','use','show','selected','select','flag','process','include?','use?','active']),
+    filenameCol,
+    captionCol: find(['caption','description','desc','text','note','notes','label','comment','comments']),
+    includeCol: find(['include','use','show','selected','select','flag','process','include?','use?','active']),
   };
 }
 
 function parseLog(data) {
   if (!data.length || !data[0].length) throw new Error('Log file appears empty.');
-  const headers = data[0].map(h => String(h ?? ''));
-  const { filenameCol, captionCol, includeCol } = detectColumns(headers);
-  if (filenameCol < 0) throw new Error('Cannot find a filename column. Expected "Filename", "File", "Photo", or "Image".');
-  if (captionCol  < 0) throw new Error('Cannot find a caption column. Expected "Caption", "Description", or "Notes".');
+  const headers  = data[0].map(h => String(h ?? ''));
+  const dataRows = data.slice(1);
+  const { filenameCol, captionCol, includeCol } = detectColumns(headers, dataRows);
+  if (filenameCol < 0) throw new Error('Cannot find a filename column. Expected a column whose cells contain image filenames (e.g. IMG_001.JPG), or a header like "Filename", "File", or "Photo".');
+  if (captionCol  < 0) throw new Error('Cannot find a caption column. Expected a header like "Caption", "Description", or "Notes".');
   const rows = [];
-  for (let i = 1; i < data.length; i++) {
-    const row      = data[i];
+  for (const row of dataRows) {
     const filename = String(row[filenameCol] ?? '').trim();
     if (!filename) continue;
     if (includeCol >= 0) {
@@ -91,16 +113,12 @@ function parseLog(data) {
 // ─── Photo file handling ──────────────────────────────────────────────────────
 
 function handlePhotoFiles(files) {
-  let added = 0;
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
     const key = f.name.toLowerCase();
-    // If same filename is replaced, revoke the old preview URL
     if (thumbUrls.has(key)) { URL.revokeObjectURL(thumbUrls.get(key)); thumbUrls.delete(key); }
     photoMap.set(key, f);
-    added++;
   }
-
   if (photoMap.size) {
     photosInfo.textContent = `${photoMap.size} image(s) loaded`;
     photosZone.classList.add('has-file');
@@ -108,11 +126,26 @@ function handlePhotoFiles(files) {
     photosInfo.textContent = 'No image files found in that selection.';
     photosZone.classList.remove('has-file');
   }
-
   updateBtn();
   renderPhotosPreview();
-  renderLogPreview();      // refresh Found / Missing badges
+  renderLogPreview();
   if (logRows && photoMap.size) clearStatus();
+}
+
+function removePhoto(name) {
+  if (thumbUrls.has(name)) { URL.revokeObjectURL(thumbUrls.get(name)); thumbUrls.delete(name); }
+  photoMap.delete(name);
+  if (photoMap.size) {
+    photosInfo.textContent = `${photoMap.size} image(s) loaded`;
+    renderPhotosPreview();
+  } else {
+    photosInfo.textContent = '';
+    photosZone.classList.remove('has-file');
+    document.getElementById('photos-preview').style.display = 'none';
+    document.getElementById('photos-grid').innerHTML = '';
+  }
+  updateBtn();
+  renderLogPreview();
 }
 
 function clearPhotos() {
@@ -124,32 +157,38 @@ function clearPhotos() {
   document.getElementById('photos-preview').style.display = 'none';
   document.getElementById('photos-grid').innerHTML = '';
   updateBtn();
-  renderLogPreview();    // update badges to "pending"
+  renderLogPreview();
+}
+
+function clearLog() {
+  logRows = null;
+  logZone.classList.remove('has-file');
+  logInfo.textContent = '';
+  document.getElementById('log-preview').style.display = 'none';
+  document.getElementById('log-tbody').innerHTML = '';
+  updateBtn();
+  clearStatus();
 }
 
 // ─── Preview: log table ───────────────────────────────────────────────────────
 
 function renderLogPreview() {
   if (!logRows) return;
-
-  const panel = document.getElementById('log-preview');
-  const tbody = document.getElementById('log-tbody');
-  const meta  = document.getElementById('log-preview-meta');
+  const panel     = document.getElementById('log-preview');
+  const tbody     = document.getElementById('log-tbody');
+  const meta      = document.getElementById('log-preview-meta');
   const hasPhotos = photoMap.size > 0;
 
   meta.textContent = `${logRows.length} row(s)`;
-  tbody.innerHTML = '';
+  tbody.innerHTML  = '';
 
   logRows.forEach((row, i) => {
     const found = photoMap.has(row.filename.toLowerCase());
-    let badge;
-    if (!hasPhotos) {
-      badge = '<span class="badge badge-pending">—</span>';
-    } else if (found) {
-      badge = '<span class="badge badge-found">Found</span>';
-    } else {
-      badge = '<span class="badge badge-missing">Missing</span>';
-    }
+    const badge = !hasPhotos
+      ? '<span class="badge badge-pending">—</span>'
+      : found
+        ? '<span class="badge badge-found">Found</span>'
+        : '<span class="badge badge-missing">Missing</span>';
 
     const tr = document.createElement('tr');
     tr.innerHTML =
@@ -167,28 +206,41 @@ function renderLogPreview() {
 
 function renderPhotosPreview() {
   if (!photoMap.size) return;
-
   const panel = document.getElementById('photos-preview');
   const grid  = document.getElementById('photos-grid');
   const meta  = document.getElementById('photos-preview-meta');
 
   meta.textContent = `${photoMap.size} file(s)`;
-  grid.innerHTML = '';
+  grid.innerHTML   = '';
 
   for (const [name, file] of photoMap) {
     if (!thumbUrls.has(name)) thumbUrls.set(name, URL.createObjectURL(file));
-    const url  = thumbUrls.get(name);
+
     const item = document.createElement('div');
     item.className = 'photo-item';
-    const img  = document.createElement('img');
-    img.src     = url;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-wrap';
+
+    const img = document.createElement('img');
+    img.src     = thumbUrls.get(name);
     img.alt     = name;
     img.loading = 'lazy';
-    const lbl  = document.createElement('div');
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className   = 'photo-remove-btn';
+    removeBtn.title       = 'Remove';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => removePhoto(name));
+
+    wrap.append(img, removeBtn);
+
+    const lbl = document.createElement('div');
     lbl.className   = 'thumb-name';
     lbl.textContent = name;
     lbl.title       = name;
-    item.append(img, lbl);
+
+    item.append(wrap, lbl);
     grid.appendChild(item);
   }
 
@@ -521,6 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireZone(logZone,    { onFile:  f  => handleLogFile(f)     });
   wireZone(photosZone, { onFiles: fs => handlePhotoFiles(fs) });
 
+  document.getElementById('log-clear-btn')   .addEventListener('click', clearLog);
   document.getElementById('photos-clear-btn').addEventListener('click', clearPhotos);
 
   generateBtn.addEventListener('click', generate);
